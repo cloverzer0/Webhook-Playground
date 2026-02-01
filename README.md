@@ -146,7 +146,7 @@ Health check endpoint.
 ## Architecture
 
 - **Backend**: Node.js + Express server that receives and stores webhook events
-- **Frontend**: React application with inline styles for webhook visualization
+- **Frontend**: Vanilla JavaScript application with clean, modern UI for webhook visualization
 - **Storage**: In-memory storage (last 100 events)
 
 ## Supported Services
