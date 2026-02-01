@@ -44,8 +44,11 @@ function verifyStripeSignature(payload, signature, secret) {
   }
 }
 
-// Webhook receiver endpoint
-app.post('/webhook/:provider?', (req, res) => {
+// Webhook receiver endpoints
+app.post('/webhook/:provider', handleWebhook);
+app.post('/webhook', handleWebhook);
+
+function handleWebhook(req, res) {
   const provider = req.params.provider || 'generic';
   const rawBody = JSON.stringify(req.body);
   const headers = req.headers;
@@ -91,7 +94,7 @@ app.post('/webhook/:provider?', (req, res) => {
     eventId: event.id,
     message: 'Webhook received successfully' 
   });
-});
+}
 
 // Get all webhook events
 app.get('/events', (req, res) => {

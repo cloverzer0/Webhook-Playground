@@ -1,533 +1,226 @@
-const { useState, useEffect } = React;
-
 const API_URL = 'http://localhost:3001';
 
-function App() {
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [filter, setFilter] = useState('all');
-  const [replayUrl, setReplayUrl] = useState('');
-  const [replayResult, setReplayResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+let events = [];
+let selectedEvent = null;
+let filter = 'all';
+let replayUrl = '';
 
-  const fetchEvents = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (filter === 'verified') params.append('verified', 'true');
-      if (filter === 'unverified') params.append('verified', 'false');
-      
-      const response = await fetch(`${API_URL}/events?${params}`);
-      const data = await response.json();
-      setEvents(data.events);
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
-    }
-  };
+// DOM elements
+const eventList = document.getElementById('eventList');
+const detailPanel = document.getElementById('detailPanel');
+const filterSelect = document.getElementById('filterSelect');
+const clearButton = document.getElementById('clearButton');
+const eventCount = document.getElementById('eventCount');
 
-  useEffect(() => {
-    fetchEvents();
-    const interval = setInterval(fetchEvents, 3000);
-    return () => clearInterval(interval);
-  }, [filter]);
-
-  const clearEvents = async () => {
-    if (confirm('Are you sure you want to clear all events?')) {
-      try {
-        await fetch(`${API_URL}/events`, { method: 'DELETE' });
-        setEvents([]);
-        setSelectedEvent(null);
-      } catch (error) {
-        console.error('Failed to clear events:', error);
-      }
-    }
-  };
-
-  const replayEvent = async (eventId) => {
-    if (!replayUrl) {
-      alert('Please enter a target URL');
-      return;
-    }
-
-    setLoading(true);
-    setReplayResult(null);
-
-    try {
-      const response = await fetch(`${API_URL}/replay/${eventId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl: replayUrl })
-      });
-      const result = await response.json();
-      setReplayResult(result);
-    } catch (error) {
-      setReplayResult({ success: false, error: error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString();
-  };
-
-  const getEventTypeDisplay = (event) => {
-    if (event.eventType) return event.eventType;
-    if (event.body?.type) return event.body.type;
-    return 'webhook';
-  };
-
-  return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>🪝 Webhook Playground</h1>
-        <p style={styles.subtitle}>Receive, verify, and replay webhooks</p>
-      </header>
-
-      <div style={styles.content}>
-        <div style={styles.sidebar}>
-          <div style={styles.controls}>
-            <div style={styles.webhookInfo}>
-              <h3 style={styles.sectionTitle}>Webhook Endpoint</h3>
-              <code style={styles.endpoint}>POST {API_URL}/webhook/:provider</code>
-              <div style={styles.providerExamples}>
-                <small>Examples:</small>
-                <div><code style={styles.smallCode}>/webhook/stripe</code></div>
-                <div><code style={styles.smallCode}>/webhook/github</code></div>
-              </div>
-            </div>
-
-            <div style={styles.filterSection}>
-              <h3 style={styles.sectionTitle}>Filter Events</h3>
-              <select 
-                value={filter} 
-                onChange={(e) => setFilter(e.target.value)}
-                style={styles.select}
-              >
-                <option value="all">All Events</option>
-                <option value="verified">Verified Only</option>
-                <option value="unverified">Unverified Only</option>
-              </select>
-            </div>
-
-            <button onClick={clearEvents} style={styles.clearButton}>
-              Clear All Events
-            </button>
-
-            <div style={styles.eventCount}>
-              {events.length} event{events.length !== 1 ? 's' : ''} captured
-            </div>
-          </div>
-
-          <div style={styles.eventList}>
-            {events.length === 0 ? (
-              <div style={styles.emptyState}>
-                <p>No webhook events received yet.</p>
-                <p style={styles.emptyHint}>Send a webhook to get started!</p>
-              </div>
-            ) : (
-              events.map(event => (
-                <div 
-                  key={event.id}
-                  style={{
-                    ...styles.eventItem,
-                    ...(selectedEvent?.id === event.id ? styles.eventItemSelected : {})
-                  }}
-                  onClick={() => {
-                    setSelectedEvent(event);
-                    setReplayResult(null);
-                  }}
-                >
-                  <div style={styles.eventHeader}>
-                    <span style={styles.eventProvider}>{event.provider}</span>
-                    {event.verified && <span style={styles.verifiedBadge}>✓ Verified</span>}
-                  </div>
-                  <div style={styles.eventType}>{getEventTypeDisplay(event)}</div>
-                  <div style={styles.eventTime}>{formatTimestamp(event.timestamp)}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div style={styles.detailPanel}>
-          {selectedEvent ? (
-            <>
-              <div style={styles.detailHeader}>
-                <h2 style={styles.detailTitle}>Event Details</h2>
-                <div style={styles.eventMeta}>
-                  <span style={styles.eventId}>ID: {selectedEvent.id}</span>
-                  <span style={styles.eventProvider}>{selectedEvent.provider}</span>
-                  {selectedEvent.verified && <span style={styles.verifiedBadge}>✓ Verified</span>}
-                </div>
-              </div>
-
-              <div style={styles.detailContent}>
-                <div style={styles.section}>
-                  <h3 style={styles.sectionTitle}>Event Type</h3>
-                  <code style={styles.code}>{getEventTypeDisplay(selectedEvent)}</code>
-                </div>
-
-                <div style={styles.section}>
-                  <h3 style={styles.sectionTitle}>Timestamp</h3>
-                  <code style={styles.code}>{formatTimestamp(selectedEvent.timestamp)}</code>
-                </div>
-
-                {selectedEvent.verificationDetails && Object.keys(selectedEvent.verificationDetails).length > 0 && (
-                  <div style={styles.section}>
-                    <h3 style={styles.sectionTitle}>Verification Details</h3>
-                    <pre style={styles.json}>
-                      {JSON.stringify(selectedEvent.verificationDetails, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                <div style={styles.section}>
-                  <h3 style={styles.sectionTitle}>Headers</h3>
-                  <pre style={styles.json}>
-                    {JSON.stringify(selectedEvent.headers, null, 2)}
-                  </pre>
-                </div>
-
-                <div style={styles.section}>
-                  <h3 style={styles.sectionTitle}>Payload</h3>
-                  <pre style={styles.json}>
-                    {JSON.stringify(selectedEvent.body, null, 2)}
-                  </pre>
-                </div>
-
-                <div style={styles.section}>
-                  <h3 style={styles.sectionTitle}>Replay Event</h3>
-                  <div style={styles.replaySection}>
-                    <input
-                      type="text"
-                      placeholder="https://your-app.com/webhook"
-                      value={replayUrl}
-                      onChange={(e) => setReplayUrl(e.target.value)}
-                      style={styles.input}
-                    />
-                    <button 
-                      onClick={() => replayEvent(selectedEvent.id)}
-                      disabled={loading || !replayUrl}
-                      style={{
-                        ...styles.replayButton,
-                        ...(loading || !replayUrl ? styles.replayButtonDisabled : {})
-                      }}
-                    >
-                      {loading ? 'Replaying...' : 'Replay to URL'}
-                    </button>
-                  </div>
-
-                  {replayResult && (
-                    <div style={{
-                      ...styles.replayResult,
-                      ...(replayResult.success ? styles.replaySuccess : styles.replayError)
-                    }}>
-                      {replayResult.success ? (
-                        <>
-                          <strong>✓ Replay successful!</strong>
-                          <div>Status: {replayResult.status}</div>
-                          {replayResult.responseBody && (
-                            <pre style={styles.replayResponse}>
-                              {replayResult.responseBody}
-                            </pre>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <strong>✗ Replay failed</strong>
-                          <div>{replayResult.error}</div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div style={styles.detailEmpty}>
-              <h2>Select an event to view details</h2>
-              <p>Click on an event from the list to see its full payload, headers, and replay options.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+// Fetch events from API
+async function fetchEvents() {
+  try {
+    const params = new URLSearchParams();
+    if (filter === 'verified') params.append('verified', 'true');
+    if (filter === 'unverified') params.append('verified', 'false');
+    
+    const response = await fetch(`${API_URL}/events?${params}`);
+    const data = await response.json();
+    events = data.events;
+    renderEvents();
+    updateEventCount();
+  } catch (error) {
+    console.error('Failed to fetch events:', error);
+  }
 }
 
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  header: {
-    background: 'rgba(255, 255, 255, 0.95)',
-    padding: '1.5rem 2rem',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-  },
-  title: {
-    fontSize: '2rem',
-    color: '#333',
-    marginBottom: '0.25rem',
-  },
-  subtitle: {
-    color: '#666',
-    fontSize: '1rem',
-  },
-  content: {
-    flex: 1,
-    display: 'flex',
-    gap: '1rem',
-    padding: '1rem',
-    maxHeight: 'calc(100vh - 120px)',
-  },
-  sidebar: {
-    width: '350px',
-    background: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: '12px',
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  },
-  controls: {
-    padding: '1.5rem',
-    borderBottom: '1px solid #e0e0e0',
-  },
-  webhookInfo: {
-    marginBottom: '1.5rem',
-  },
-  sectionTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: '0.5rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  endpoint: {
-    display: 'block',
-    padding: '0.75rem',
-    background: '#f5f5f5',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    color: '#667eea',
-    fontWeight: '500',
-    wordBreak: 'break-all',
-  },
-  providerExamples: {
-    marginTop: '0.5rem',
-    fontSize: '0.75rem',
-    color: '#666',
-  },
-  smallCode: {
-    background: '#f5f5f5',
-    padding: '0.125rem 0.25rem',
-    borderRadius: '3px',
-    fontSize: '0.75rem',
-  },
-  filterSection: {
-    marginBottom: '1rem',
-  },
-  select: {
-    width: '100%',
-    padding: '0.5rem',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-  },
-  clearButton: {
-    width: '100%',
-    padding: '0.75rem',
-    background: '#ff4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    marginBottom: '1rem',
-  },
-  eventCount: {
-    textAlign: 'center',
-    color: '#666',
-    fontSize: '0.875rem',
-  },
-  eventList: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '1rem',
-  },
-  emptyState: {
-    textAlign: 'center',
-    color: '#999',
-    padding: '2rem 1rem',
-  },
-  emptyHint: {
-    fontSize: '0.875rem',
-    marginTop: '0.5rem',
-  },
-  eventItem: {
-    padding: '1rem',
-    background: '#f9f9f9',
-    borderRadius: '8px',
-    marginBottom: '0.5rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    border: '2px solid transparent',
-  },
-  eventItemSelected: {
-    background: '#e8eaff',
-    border: '2px solid #667eea',
-  },
-  eventHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '0.5rem',
-  },
-  eventProvider: {
-    background: '#667eea',
-    color: 'white',
-    padding: '0.25rem 0.5rem',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  verifiedBadge: {
-    background: '#4caf50',
-    color: 'white',
-    padding: '0.25rem 0.5rem',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-  },
-  eventType: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: '0.25rem',
-  },
-  eventTime: {
-    fontSize: '0.75rem',
-    color: '#999',
-  },
-  detailPanel: {
-    flex: 1,
-    background: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: '12px',
-    padding: '1.5rem',
-    overflowY: 'auto',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  },
-  detailEmpty: {
-    textAlign: 'center',
-    color: '#999',
-    padding: '4rem 2rem',
-  },
-  detailHeader: {
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '2px solid #e0e0e0',
-  },
-  detailTitle: {
-    fontSize: '1.5rem',
-    color: '#333',
-    marginBottom: '1rem',
-  },
-  eventMeta: {
-    display: 'flex',
-    gap: '1rem',
-    flexWrap: 'wrap',
-  },
-  eventId: {
-    fontSize: '0.875rem',
-    color: '#666',
-    fontFamily: 'monospace',
-  },
-  detailContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
-  },
-  section: {
-    background: '#f9f9f9',
-    padding: '1rem',
-    borderRadius: '8px',
-  },
-  code: {
-    display: 'block',
-    padding: '0.5rem',
-    background: 'white',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
-    fontFamily: 'monospace',
-  },
-  json: {
-    background: 'white',
-    padding: '1rem',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
-    fontFamily: 'monospace',
-    overflow: 'auto',
-    maxHeight: '300px',
-  },
-  replaySection: {
-    display: 'flex',
-    gap: '0.5rem',
-    marginBottom: '1rem',
-  },
-  input: {
-    flex: 1,
-    padding: '0.75rem',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-  },
-  replayButton: {
-    padding: '0.75rem 1.5rem',
-    background: '#667eea',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    whiteSpace: 'nowrap',
-  },
-  replayButtonDisabled: {
-    background: '#ccc',
-    cursor: 'not-allowed',
-  },
-  replayResult: {
-    padding: '1rem',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-  },
-  replaySuccess: {
-    background: '#d4edda',
-    color: '#155724',
-    border: '1px solid #c3e6cb',
-  },
-  replayError: {
-    background: '#f8d7da',
-    color: '#721c24',
-    border: '1px solid #f5c6cb',
-  },
-  replayResponse: {
-    marginTop: '0.5rem',
-    padding: '0.5rem',
-    background: 'white',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontFamily: 'monospace',
-    maxHeight: '150px',
-    overflow: 'auto',
-  },
-};
+// Render event list
+function renderEvents() {
+  if (events.length === 0) {
+    eventList.innerHTML = `
+      <div class="empty-state">
+        <p>No webhook events received yet.</p>
+        <p class="empty-hint">Send a webhook to get started!</p>
+      </div>
+    `;
+    return;
+  }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+  eventList.innerHTML = events.map(event => `
+    <div class="event-item ${selectedEvent && selectedEvent.id === event.id ? 'selected' : ''}"
+         onclick="selectEvent('${event.id}')">
+      <div class="event-header">
+        <span class="event-provider">${event.provider}</span>
+        ${event.verified ? '<span class="verified-badge">✓ Verified</span>' : ''}
+      </div>
+      <div class="event-type">${getEventTypeDisplay(event)}</div>
+      <div class="event-time">${formatTimestamp(event.timestamp)}</div>
+    </div>
+  `).join('');
+}
+
+// Select an event
+function selectEvent(eventId) {
+  selectedEvent = events.find(e => e.id === eventId);
+  renderEvents();
+  renderEventDetail();
+}
+
+// Render event detail
+function renderEventDetail() {
+  if (!selectedEvent) {
+    detailPanel.innerHTML = `
+      <div class="detail-empty">
+        <h2>Select an event to view details</h2>
+        <p>Click on an event from the list to see its full payload, headers, and replay options.</p>
+      </div>
+    `;
+    return;
+  }
+
+  detailPanel.innerHTML = `
+    <div class="detail-header">
+      <h2 class="detail-title">Event Details</h2>
+      <div class="event-meta">
+        <span class="event-id">ID: ${selectedEvent.id}</span>
+        <span class="event-provider">${selectedEvent.provider}</span>
+        ${selectedEvent.verified ? '<span class="verified-badge">✓ Verified</span>' : ''}
+      </div>
+    </div>
+
+    <div class="detail-content">
+      <div class="section">
+        <h3 class="section-title">Event Type</h3>
+        <code class="code">${getEventTypeDisplay(selectedEvent)}</code>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">Timestamp</h3>
+        <code class="code">${formatTimestamp(selectedEvent.timestamp)}</code>
+      </div>
+
+      ${selectedEvent.verificationDetails && Object.keys(selectedEvent.verificationDetails).length > 0 ? `
+        <div class="section">
+          <h3 class="section-title">Verification Details</h3>
+          <pre class="json">${JSON.stringify(selectedEvent.verificationDetails, null, 2)}</pre>
+        </div>
+      ` : ''}
+
+      <div class="section">
+        <h3 class="section-title">Headers</h3>
+        <pre class="json">${JSON.stringify(selectedEvent.headers, null, 2)}</pre>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">Payload</h3>
+        <pre class="json">${JSON.stringify(selectedEvent.body, null, 2)}</pre>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">Replay Event</h3>
+        <div class="replay-section">
+          <input type="text" id="replayInput" placeholder="https://your-app.com/webhook" value="${replayUrl}">
+          <button class="replay-button" onclick="replayEvent()">Replay to URL</button>
+        </div>
+        <div id="replayResult"></div>
+      </div>
+    </div>
+  `;
+}
+
+// Replay event
+async function replayEvent() {
+  const input = document.getElementById('replayInput');
+  const url = input.value;
+  
+  if (!url) {
+    alert('Please enter a target URL');
+    return;
+  }
+
+  replayUrl = url;
+  const resultDiv = document.getElementById('replayResult');
+  resultDiv.innerHTML = '<p>Replaying...</p>';
+
+  try {
+    const response = await fetch(`${API_URL}/replay/${selectedEvent.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUrl: url })
+    });
+    const result = await response.json();
+
+    if (result.success) {
+      resultDiv.innerHTML = `
+        <div class="replay-result replay-success">
+          <strong>✓ Replay successful!</strong>
+          <div>Status: ${result.status}</div>
+          ${result.responseBody ? `
+            <pre class="replay-response">${result.responseBody}</pre>
+          ` : ''}
+        </div>
+      `;
+    } else {
+      resultDiv.innerHTML = `
+        <div class="replay-result replay-error">
+          <strong>✗ Replay failed</strong>
+          <div>${result.error}</div>
+        </div>
+      `;
+    }
+  } catch (error) {
+    resultDiv.innerHTML = `
+      <div class="replay-result replay-error">
+        <strong>✗ Replay failed</strong>
+        <div>${error.message}</div>
+      </div>
+    `;
+  }
+}
+
+// Clear all events
+async function clearEvents() {
+  if (!confirm('Are you sure you want to clear all events?')) {
+    return;
+  }
+
+  try {
+    await fetch(`${API_URL}/events`, { method: 'DELETE' });
+    events = [];
+    selectedEvent = null;
+    renderEvents();
+    renderEventDetail();
+    updateEventCount();
+  } catch (error) {
+    console.error('Failed to clear events:', error);
+  }
+}
+
+// Update event count
+function updateEventCount() {
+  const count = events.length;
+  eventCount.textContent = `${count} event${count !== 1 ? 's' : ''} captured`;
+}
+
+// Format timestamp
+function formatTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleString();
+}
+
+// Get event type display
+function getEventTypeDisplay(event) {
+  if (event.eventType) return event.eventType;
+  if (event.body && event.body.type) return event.body.type;
+  if (event.body && event.body.action) return event.body.action;
+  if (event.body && event.body.event) return event.body.event;
+  return 'webhook';
+}
+
+// Event listeners
+filterSelect.addEventListener('change', (e) => {
+  filter = e.target.value;
+  fetchEvents();
+});
+
+clearButton.addEventListener('click', clearEvents);
+
+// Initialize
+fetchEvents();
+setInterval(fetchEvents, 3000);
+
