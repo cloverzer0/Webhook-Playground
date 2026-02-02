@@ -1,0 +1,47 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model WebhookEvent {
+  id              Int              @id @default(autoincrement())
+  provider        String
+  eventId         String?          @map("event_id")
+  eventType       String?          @map("event_type")
+  payload         String           // JSON as string
+  headers         String           // JSON as string
+  receivedAt      DateTime         @default(now()) @map("received_at")
+  verified        Boolean          @default(false)
+  verificationDetails String?      @map("verification_details") // JSON as string
+  
+  replayAttempts  ReplayAttempt[]
+
+  @@index([receivedAt])
+  @@index([provider])
+  @@index([eventType])
+  @@map("webhook_events")
+}
+
+model ReplayAttempt {
+  id              Int           @id @default(autoincrement())
+  eventId         Int           @map("event_id")
+  targetUrl       String        @map("target_url")
+  statusCode      Int?          @map("status_code")
+  responseBody    String?       @map("response_body")
+  replayedAt      DateTime      @default(now()) @map("replayed_at")
+  success         Boolean       @default(false)
+  error           String?
+  
+  event           WebhookEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([replayedAt])
+  @@map("replay_attempts")
+}
