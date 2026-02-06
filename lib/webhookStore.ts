@@ -8,8 +8,6 @@ export interface WebhookEvent {
   headers: Record<string, string | string[] | undefined>;
   body: any;
   rawBody: string;
-  verified: boolean;
-  verificationDetails: Record<string, any>;
   eventType?: string;
   eventId?: string;
 }
@@ -43,8 +41,6 @@ export class WebhookStore {
         eventType: event.eventType || null,
         payload: JSON.stringify(event.body),
         headers: JSON.stringify(event.headers),
-        verified: event.verified,
-        verificationDetails: JSON.stringify(event.verificationDetails),
       },
     });
 
@@ -54,15 +50,11 @@ export class WebhookStore {
     return this.dbEventToWebhookEvent(dbEvent);
   }
 
-  async getEvents(filter: { provider?: string; verified?: boolean } = {}): Promise<WebhookEvent[]> {
+  async getEvents(filter: { provider?: string } = {}): Promise<WebhookEvent[]> {
     const where: any = {};
     
     if (filter.provider) {
       where.provider = filter.provider;
-    }
-    
-    if (filter.verified !== undefined) {
-      where.verified = filter.verified;
     }
 
     const events = await prisma.webhookEvent.findMany({
@@ -165,10 +157,6 @@ export class WebhookStore {
       headers: JSON.parse(dbEvent.headers),
       body: JSON.parse(dbEvent.payload),
       rawBody: dbEvent.payload,
-      verified: dbEvent.verified,
-      verificationDetails: dbEvent.verificationDetails 
-        ? JSON.parse(dbEvent.verificationDetails) 
-        : {},
     };
   }
 }
@@ -181,42 +169,4 @@ export function getStore(): WebhookStore {
     storeInstance = new WebhookStore();
   }
   return storeInstance;
-}
-
-export function verifyStripeSignature(
-  payload: string,
-  signature: string,
-  secret: string
-): VerificationResult {
-  if (!secret || !signature) {
-    return { valid: false, error: 'Missing secret or signature' };
-  }
-
-  try {
-    const parts = signature.split(',');
-    const timestampPart = parts.find(s => s.startsWith('t='));
-    const expectedSigPart = parts.find(s => s.startsWith('v1='));
-    
-    if (!timestampPart || !expectedSigPart) {
-      return { valid: false, error: 'Invalid signature format' };
-    }
-    
-    const timestamp = timestampPart.split('=')[1];
-    const expectedSig = expectedSigPart.split('=')[1];
-    
-    const signedPayload = `${timestamp}.${payload}`;
-    const computedSig = crypto
-      .createHmac('sha256', secret)
-      .update(signedPayload, 'utf8')
-      .digest('hex');
-
-    const valid = crypto.timingSafeEqual(
-      Buffer.from(expectedSig),
-      Buffer.from(computedSig)
-    );
-
-    return { valid, timestamp };
-  } catch (error) {
-    return { valid: false, error: (error as Error).message };
-  }
 }

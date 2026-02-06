@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { v4 as uuidv4 } from 'uuid';
-import { getStore, verifyStripeSignature } from '../../../lib/webhookStore';
+import { getStore } from '../../../lib/webhookStore';
 
 export const config = {
   api: {
@@ -48,23 +47,12 @@ export default async function handler(
     headers: headers,
     body: body,
     rawBody: rawBody,
-    verified: false,
-    verificationDetails: {},
     eventId: undefined as string | undefined,
     eventType: undefined as string | undefined,
   };
 
   // Stripe-specific handling
   if (providerName === 'stripe') {
-    const signature = headers['stripe-signature'] as string | undefined;
-    const secret = process.env.STRIPE_WEBHOOK_SECRET;
-    
-    if (signature && secret) {
-      const verification = verifyStripeSignature(rawBody, signature, secret);
-      eventData.verified = verification.valid;
-      eventData.verificationDetails = verification;
-    }
-    
     // Extract Stripe event ID and type
     if (body.id) {
       eventData.eventId = body.id;

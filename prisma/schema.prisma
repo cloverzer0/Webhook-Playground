@@ -3,10 +3,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,8 +19,6 @@ model WebhookEvent {
   payload         String           // JSON as string
   headers         String           // JSON as string
   receivedAt      DateTime         @default(now()) @map("received_at")
-  verified        Boolean          @default(false)
-  verificationDetails String?      @map("verification_details") // JSON as string
   
   replayAttempts  ReplayAttempt[]
 

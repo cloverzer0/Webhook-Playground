@@ -215,24 +215,6 @@ export default function EventDetail() {
                     <p className="text-xs font-medium text-muted-foreground mb-1">Received At</p>
                     <p className="text-sm">{format(new Date(event.timestamp), 'PPpp')}</p>
                   </div>
-
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Signature Verified</p>
-                    {event.verified ? (
-                      <Badge variant="success">✓ Verified</Badge>
-                    ) : (
-                      <Badge variant="destructive">✗ Unverified</Badge>
-                    )}
-                  </div>
-
-                  {event.verificationDetails && Object.keys(event.verificationDetails).length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Verification Details</p>
-                      <pre className="text-xs bg-muted/30 p-2 rounded-md overflow-auto">
-                        {JSON.stringify(event.verificationDetails, null, 2)}
-                      </pre>
-                    </div>
-                  )}
                 </div>
               </div>
 

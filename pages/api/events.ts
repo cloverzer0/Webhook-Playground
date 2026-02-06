@@ -5,14 +5,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const store = getStore();
 
   if (req.method === 'GET') {
-    const { provider, verified } = req.query;
+    const { provider } = req.query;
     
-    const filter: { provider?: string; verified?: boolean } = {};
+    const filter: { provider?: string } = {};
     if (provider && typeof provider === 'string') {
       filter.provider = provider;
-    }
-    if (verified !== undefined) {
-      filter.verified = verified === 'true';
     }
     
     const filtered = await store.getEvents(filter);

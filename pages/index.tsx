@@ -28,11 +28,7 @@ export default function Home() {
     if (!apiUrl) return
     
     try {
-      const params = new URLSearchParams()
-      if (filter === 'verified') params.append('verified', 'true')
-      if (filter === 'unverified') params.append('verified', 'false')
-      
-      const response = await fetch(`${apiUrl}/api/events?${params}`)
+      const response = await fetch(`${apiUrl}/api/events`)
       const data = await response.json()
       setEvents(data.events)
     } catch (error) {
@@ -109,20 +105,6 @@ export default function Home() {
               </div>
               
               <div className="flex-1">
-                <label className="text-sm font-medium mb-2 block">Status</label>
-                <Select value={filter} onValueChange={setFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="verified">Verified Only</SelectItem>
-                    <SelectItem value="unverified">Unverified Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Actions</label>
                 <Button 
                   variant="destructive" 
@@ -153,14 +135,13 @@ export default function Home() {
                   <TableHead>Event Type</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead>Received At</TableHead>
-                  <TableHead>Verified</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEvents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-12">
                       No webhook events received yet. Send a webhook to get started!
                     </TableCell>
                   </TableRow>
@@ -179,13 +160,6 @@ export default function Home() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(event.timestamp), 'PPpp')}
-                      </TableCell>
-                      <TableCell>
-                        {event.verified ? (
-                          <Badge variant="success">✓ Verified</Badge>
-                        ) : (
-                          <Badge variant="destructive">✗ Unverified</Badge>
-                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button 
