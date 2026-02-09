@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
-import { Play, Trash2 } from 'lucide-react'
+import { Play, Trash2, Calculator } from 'lucide-react'
 import ReplayModal from '@/components/ReplayModal'
 
 export default function Home() {
@@ -141,7 +141,7 @@ export default function Home() {
                 POST {apiUrl || 'http://localhost:3001'}/api/webhook/:provider
               </code>
               <p className="text-xs text-muted-foreground mt-2">
-                Examples: <code>/api/webhook/stripe</code>, <code>/api/webhook/github</code>
+                Examples: <code>/api/webhook/stripe</code>, <code>/api/webhook/github</code>, <code>/api/webhook/tokenCost</code>
               </p>
             </div>
           </div>
@@ -169,7 +169,13 @@ export default function Home() {
                     <TableRow 
                       key={event.id}
                       className="cursor-pointer"
-                      onClick={() => router.push(`/events/${event.id}`)}
+                      onClick={() => {
+                        if (event.provider === 'tokenCost') {
+                          router.push(`/token-calculator/${event.id}`)
+                        } else {
+                          router.push(`/events/${event.id}`)
+                        }
+                      }}
                     >
                       <TableCell className="font-mono text-sm">
                         {getEventTypeDisplay(event)}
@@ -188,16 +194,29 @@ export default function Home() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setReplayEvent(event)
-                          }}
-                        >
-                          <Play className="h-4 w-4" />
-                        </Button>
+                        {event.provider === 'tokenCost' ? (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/token-calculator/${event.id}`)
+                            }}
+                          >
+                            <Calculator className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setReplayEvent(event)
+                            }}
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

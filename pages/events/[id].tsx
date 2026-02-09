@@ -27,6 +27,13 @@ export default function EventDetail() {
         const response = await fetch(`/api/events/${id}`)
         if (response.ok) {
           const data = await response.json()
+          
+          // Redirect to token calculator for tokenCost events
+          if (data.provider === 'tokenCost') {
+            router.push(`/token-calculator/${id}`)
+            return
+          }
+          
           setEvent(data)
           
           // Fetch replay history
