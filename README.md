@@ -114,7 +114,39 @@ POST http://localhost:3001/api/webhook/:provider
 Examples:
 - Stripe: `POST http://localhost:3001/api/webhook/stripe`
 - GitHub: `POST http://localhost:3001/api/webhook/github`
+- Token Cost: `POST http://localhost:3001/api/webhook/tokenCost`
 - Generic: `POST http://localhost:3001/api/webhook`
+
+### Using Token Cost Calculator
+
+The Token Cost endpoint uses AWS Bedrock to count input tokens and provides a calculator to estimate LLM API costs:
+
+```bash
+# Send text for token counting (using test script)
+./test-token-cost.sh "Your text to analyze" your-aws-profile
+
+# Or use curl directly
+curl -X POST http://localhost:3001/api/webhook/tokenCost \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inputText": "Your text to analyze for token counting",
+    "awsProfile": "default"
+  }'
+```
+
+**Prerequisites:**
+- AWS credentials configured at `~/.aws/credentials`
+- AWS profile with Bedrock permissions
+- Set `AWS_REGION` and `AWS_PROFILE` in `.env` file
+
+When you click on a token cost event in the UI, you'll see:
+- Input token count (calculated by AWS Bedrock)
+- Cost calculator with fields for:
+  - Output tokens (user input)
+  - Input price per 1K tokens
+  - Output price per 1K tokens
+- Real-time total cost calculation
+- Pricing reference for Claude 3 models
 
 ### Using with Stripe CLI
 
@@ -140,6 +172,7 @@ Then replay any webhook event to `http://127.0.0.1:3000/webhooks`
 ### API Endpoints
 
 - `POST /api/webhook/:provider` - Receive webhook events
+- `POST /api/webhook/tokenCost` - Token counting with AWS Bedrock (requires `inputText` and optional `awsProfile`)
 - `GET /api/events` - Get all events (supports filtering)
 - `GET /api/events/:id` - Get specific event
 - `POST /api/replay/:id` - Replay event to custom URL
@@ -152,7 +185,7 @@ Then replay any webhook event to `http://127.0.0.1:3000/webhooks`
 ### Events List (Main Dashboard)
 - **Table view** with sortable columns
 - **Filter by** event type and verification status
-- **Quick actions** for replaying events
+- **Quick actions** for replaying events or viewing token cost calculator
 - **Real-time updates** every 3 seconds
 - **Dense, scannable** layout for developers
 
@@ -163,6 +196,14 @@ Then replay any webhook event to `http://127.0.0.1:3000/webhooks`
 - **Verification status** and details
 - **Replay history** showing all past replay attempts
 - **One-click replay** access
+
+### Token Cost Calculator
+- **Interactive cost estimation** for LLM API calls
+- **Input token count** automatically calculated by AWS Bedrock
+- **Real-time cost calculation** as you enter values
+- **Formula display** showing the breakdown
+- **Pricing reference** for Claude 3 models (Haiku, Sonnet, Opus)
+- **Original input text preview**
 
 ### Replay Modal
 - **Custom target URL** input
@@ -178,10 +219,12 @@ webhook-playground/
 ├── pages/
 │   ├── index.tsx              # Events list (table view)
 │   ├── events/[id].tsx        # Event detail view
+│   ├── token-calculator/[id].tsx  # Token cost calculator
 │   ├── _app.tsx               # Next.js app wrapper
 │   └── api/
 │       ├── webhook/
-│       │   └── [[...provider]].ts  # Webhook receiver
+│       │   ├── [[...provider]].ts  # Webhook receiver
+│       │   └── tokenCost.ts        # Token cost webhook with Bedrock
 │       ├── events.ts          # Events management
 │       ├── events/[id].ts     # Single event
 │       ├── replay/
@@ -218,8 +261,15 @@ Create a `.env` file:
 
 ```env
 DATABASE_URL="file:./dev.db"
+AWS_REGION=us-east-1
+AWS_PROFILE=default
 STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
 ```
+
+**Required for Token Cost Calculator:**
+- `AWS_REGION` - AWS region for Bedrock (default: us-east-1)
+- `AWS_PROFILE` - AWS credentials profile to use (default: default)
+- AWS credentials must be configured at `~/.aws/credentials` with Bedrock permissions
 
 ## Contributing
 
